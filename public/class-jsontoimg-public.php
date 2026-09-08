@@ -13,8 +13,7 @@
 /**
  * The public-facing functionality of the plugin.
  *
- * Defines the plugin name, version, and two examples hooks for how to
- * enqueue the public-facing stylesheet and JavaScript.
+ * Registers the [jsontoimg] shortcode.
  *
  * @package    Jsontoimg
  * @subpackage Jsontoimg/public
@@ -55,49 +54,67 @@ class Jsontoimg_Public {
 	}
 
 	/**
-	 * Register the stylesheets for the public-facing side of the site.
+	 * Register the [jsontoimg] shortcode and optional frontend style.
 	 *
-	 * @since    1.0.0
+	 * @since 1.0.0
 	 */
-	public function enqueue_styles() {
-
-		/**
-		 * This function is provided for demonstration purposes only.
-		 *
-		 * An instance of this class should be passed to the run() function
-		 * defined in Jsontoimg_Loader as all of the hooks are defined
-		 * in that particular class.
-		 *
-		 * The Jsontoimg_Loader will then create the relationship
-		 * between the defined hooks and the functions defined in this
-		 * class.
-		 */
-
-		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/jsontoimg-public.css', array(), $this->version, 'all' );
-
+	public function register_shortcode() {
+		add_shortcode( 'jsontoimg', array( $this, 'render_shortcode' ) );
+		wp_register_style(
+			$this->plugin_name,
+			plugin_dir_url( __FILE__ ) . 'css/jsontoimg-public.css',
+			array(),
+			$this->version
+		);
 	}
 
 	/**
-	 * Register the JavaScript for the public-facing side of the site.
+	 * Render a signed <img> from shortcode attributes.
 	 *
-	 * @since    1.0.0
+	 * @since  1.0.0
+	 * @param  array|string $atts Shortcode attributes.
+	 * @return string
 	 */
-	public function enqueue_scripts() {
+	public function render_shortcode( $atts ) {
+		$atts = shortcode_atts(
+			array(
+				'template' => '',
+				'format'   => 'png',
+				'alt'      => '',
+				'class'    => '',
+				'width'    => '',
+				'height'   => '',
+				'layers'   => '',
+			),
+			$atts,
+			'jsontoimg'
+		);
 
-		/**
-		 * This function is provided for demonstration purposes only.
-		 *
-		 * An instance of this class should be passed to the run() function
-		 * defined in Jsontoimg_Loader as all of the hooks are defined
-		 * in that particular class.
-		 *
-		 * The Jsontoimg_Loader will then create the relationship
-		 * between the defined hooks and the functions defined in this
-		 * class.
-		 */
+		$layers = array();
+		if ( is_string( $atts['layers'] ) && '' !== trim( $atts['layers'] ) ) {
+			$decoded = json_decode( $atts['layers'], true );
+			if ( is_array( $decoded ) ) {
+				$layers = $decoded;
+			} elseif ( current_user_can( 'manage_options' ) ) {
+				return '<!-- jsontoimg: ' . esc_html__( 'layers must be valid JSON.', 'jsontoimg' ) . ' -->';
+			} else {
+				return '';
+			}
+		}
 
-		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/jsontoimg-public.js', array( 'jquery' ), $this->version, false );
+		wp_enqueue_style( $this->plugin_name );
 
+		return jsontoimg_render_image(
+			array(
+				'template' => $atts['template'],
+				'format'   => $atts['format'],
+				'layers'   => $layers,
+				'alt'      => $atts['alt'],
+				'class'    => $atts['class'],
+				'width'    => $atts['width'],
+				'height'   => $atts['height'],
+			)
+		);
 	}
 
 }

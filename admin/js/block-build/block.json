@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/block.json",
+  "apiVersion": 3,
+  "name": "jsontoimg/image",
+  "title": "jsontoimg",
+  "category": "media",
+  "icon": "format-image",
+  "description": "Render a jsontoimg template as a signed image.",
+  "keywords": [
+    "jsontoimg",
+    "image",
+    "template",
+    "render"
+  ],
+  "textdomain": "jsontoimg",
+  "attributes": {
+    "template": {
+      "type": "string",
+      "default": ""
+    },
+    "format": {
+      "type": "string",
+      "default": "png"
+    },
+    "layers": {
+      "type": "object",
+      "default": {}
+    },
+    "alt": {
+      "type": "string",
+      "default": ""
+    },
+    "width": {
+      "type": "string",
+      "default": ""
+    },
+    "height": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "supports": {
+    "html": false,
+    "align": true,
+    "anchor": false
+  },
+  "editorScript": "file:./index.js",
+  "editorStyle": "file:./index.css"
+}

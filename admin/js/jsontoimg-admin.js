@@ -1,32 +1,44 @@
 (function( $ ) {
 	'use strict';
 
-	/**
-	 * All of the code for your admin-facing JavaScript source
-	 * should reside in this file.
-	 *
-	 * Note: It has been assumed you will write jQuery code here, so the
-	 * $ function reference has been prepared for usage within the scope
-	 * of this function.
-	 *
-	 * This enables you to define handlers, for when the DOM is ready:
-	 *
-	 * $(function() {
-	 *
-	 * });
-	 *
-	 * When the window is loaded:
-	 *
-	 * $( window ).load(function() {
-	 *
-	 * });
-	 *
-	 * ...and/or other possibilities.
-	 *
-	 * Ideally, it is not considered best practise to attach more than a
-	 * single DOM-ready or window-load handler for a particular page.
-	 * Although scripts in the WordPress core, Plugins and Themes may be
-	 * practising this, we should strive to set a better example in our own work.
-	 */
+	$( function() {
+		var $button = $( '#jsontoimg-test-connection' );
+		var $result = $( '#jsontoimg-test-result' );
+
+		if ( ! $button.length || typeof jsontoimgAdmin === 'undefined' ) {
+			return;
+		}
+
+		$button.on( 'click', function( event ) {
+			event.preventDefault();
+
+			$button.prop( 'disabled', true );
+			$result.removeClass( 'notice notice-success notice-error' ).text( '' );
+
+			$.post( jsontoimgAdmin.ajaxUrl, {
+				action: 'jsontoimg_test_connection',
+				nonce: jsontoimgAdmin.nonce,
+				api_key: $( '#jsontoimg_api_key' ).val(),
+				base_url: $( '#jsontoimg_base_url' ).val()
+			} )
+				.done( function( response ) {
+					var message = response && response.data && response.data.message
+						? response.data.message
+						: jsontoimgAdmin.i18n.failed;
+
+					if ( response && response.success ) {
+						$result.addClass( 'notice notice-success inline' ).text( message );
+					} else {
+						$result.addClass( 'notice notice-error inline' ).text( message );
+					}
+				} )
+				.fail( function() {
+					$result.addClass( 'notice notice-error inline' ).text( jsontoimgAdmin.i18n.failed );
+				} )
+				.always( function() {
+					$button.prop( 'disabled', false );
+				} );
+		} );
+	} );
 
 })( jQuery );

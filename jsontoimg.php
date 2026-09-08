@@ -14,9 +14,11 @@
  *
  * @wordpress-plugin
  * Plugin Name:       jsontoimg
- * Plugin URI:        https://github
- * Description:       Render API for Jsontoimg
+ * Plugin URI:        https://github.com/jsontoimg
+ * Description:       Embed jsontoimg templates as signed images via shortcode or Gutenberg block.
  * Version:           1.0.0
+ * Requires at least: 6.6
+ * Requires PHP:      7.4
  * Author:            Skndan
  * Author URI:        https://github.com/jsontoimg/
  * License:           GPL-2.0+
@@ -36,6 +38,8 @@ if ( ! defined( 'WPINC' ) ) {
  * Rename this for your plugin and update it as you release new versions.
  */
 define( 'JSONTOIMG_VERSION', '1.0.0' );
+define( 'JSONTOIMG_PLUGIN_FILE', __FILE__ );
+define( 'JSONTOIMG_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 
 /**
  * The code that runs during plugin activation.

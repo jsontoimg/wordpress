@@ -1,0 +1,12 @@
+.jsontoimg-block img {
+	max-width: 100%;
+	height: auto;
+}
+
+.jsontoimg-block .components-placeholder {
+	min-height: 160px;
+}
+
+.jsontoimg-block .components-notice {
+	margin: 0 0 12px;
+}

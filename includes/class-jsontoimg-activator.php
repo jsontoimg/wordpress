@@ -30,7 +30,13 @@ class Jsontoimg_Activator {
 	 * @since    1.0.0
 	 */
 	public static function activate() {
+		if ( false === get_option( 'jsontoimg_base_url' ) ) {
+			add_option( 'jsontoimg_base_url', 'https://app.jsontoimg.com' );
+		}
 
+		if ( false === get_option( 'jsontoimg_cache_version' ) ) {
+			add_option( 'jsontoimg_cache_version', 1, '', false );
+		}
 	}
 
 }

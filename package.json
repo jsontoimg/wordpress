@@ -1,0 +1,13 @@
+{
+  "name": "jsontoimg",
+  "private": true,
+  "description": "WordPress plugin build for the jsontoimg Gutenberg block",
+  "license": "GPL-2.0-or-later",
+  "scripts": {
+    "build": "wp-scripts build --webpack-src-dir=admin/js/block --output-path=admin/js/block-build",
+    "start": "wp-scripts start --webpack-src-dir=admin/js/block --output-path=admin/js/block-build"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "^30.21.0"
+  }
+}
