@@ -40,6 +40,17 @@ Use the jsontoimg block, or a shortcode:
 
 `[jsontoimg template="DESIGN_ID" format="png" alt="Hello" class="aligncenter" layers='{"headline":{"text":"Hello"}}']`
 
+= Why does an image_url layer fail? =
+
+The Render API only accepts `image_url` values that are:
+
+* `https://…/file.png` (also `.jpg`, `.jpeg`, `.webp`), or
+* a dashboard Assets path `/api/uploads/files/{id}`
+
+`https://placehold.co/600x400` is rejected (no file extension). `https://placehold.co/600x400.png` may pass validation and still fail when the renderer fetches it, because placeholder CDNs often block server-side downloads. Use a real public file from the Media Library or the jsontoimg Assets library.
+
+For `logo`, send JSON like `{"logo":{"image_url":"https://example.com/logo.png"}}` — not a `layers` query you hand-edit. The plugin mints that signed URL for you.
+
 = Does every page view consume a credit? =
 
 No. The plugin caches the signed URL. The first unique GET of that URL bills once; repeats are cache hits on jsontoimg.
