@@ -1,114 +1,79 @@
-=== Plugin Name ===
-Contributors: (this should be a list of wordpress.org userid's)
-Donate link: https://github.com/jsontoimg/
-Tags: comments, spam
-Requires at least: 3.0.1
-Tested up to: 3.4
-Stable tag: 4.3
+=== jsontoimg ===
+Contributors: skndan
+Tags: images, templates, gutenberg, shortcode, render
+Requires at least: 6.6
+Tested up to: 6.8
+Requires PHP: 7.4
+Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Here is a short description of the plugin.  This should be no more than 150 characters.  No markup here.
+Embed jsontoimg templates as signed images with a shortcode or Gutenberg block.
 
 == Description ==
 
-This is the long description.  No limit, and you can use Markdown (as well as in the following sections).
+jsontoimg connects WordPress to the [jsontoimg Render API](https://docs.jsontoimg.com/docs/api). Editors pick a template, override layer text, and the plugin mints a signed image URL for an `<img>` tag.
 
-For backwards compatibility, if this section is missing, the full length of the short description will be used, and
-Markdown parsed.
+The signed URL is the CMS path (`POST /api/v1/img/sign`). The visitor's browser fetches `GET /api/v1/img/{template}` with an HMAC `sig` — no API key is sent to the frontend. The first unique GET bills the template owner; later hits are cache hits.
 
-A few notes about the sections above:
+= Features =
 
-*   "Contributors" is a comma separated list of wp.org/wp-plugins.org usernames
-*   "Tags" is a comma separated list of tags that apply to the plugin
-*   "Requires at least" is the lowest version that the plugin will work on
-*   "Tested up to" is the highest version that you've *successfully used to test the plugin*. Note that it might work on
-higher versions... this is just the highest one you've verified.
-*   Stable tag should indicate the Subversion "tag" of the latest stable version, or "trunk," if you use `/trunk/` for
-stable.
-
-    Note that the `readme.txt` of the stable tag is the one that is considered the defining one for the plugin, so
-if the `/trunk/readme.txt` file says that the stable tag is `4.3`, then it is `/tags/4.3/readme.txt` that'll be used
-for displaying information about the plugin.  In this situation, the only thing considered from the trunk `readme.txt`
-is the stable tag pointer.  Thus, if you develop in trunk, you can update the trunk `readme.txt` to reflect changes in
-your in-development version, without having that information incorrectly disclosed about the current stable version
-that lacks those changes -- as long as the trunk's `readme.txt` points to the correct stable tag.
-
-    If no stable tag is provided, it is assumed that trunk is stable, but you should specify "trunk" if that's where
-you put the stable version, in order to eliminate any doubt.
+* Settings page for API key and optional self-hosted base URL
+* `[jsontoimg]` shortcode
+* Gutenberg block with template picker, schema-driven layer fields, and Set as Featured Image
+* PHP helpers for themes: `jsontoimg_sign_url()`, `jsontoimg_render_image()`, `jsontoimg_list_templates()`
+* Transient cache so posts do not mint a URL on every view
 
 == Installation ==
 
-This section describes how to install the plugin and get it working.
-
-e.g.
-
-1. Upload `jsontoimg.php` to the `/wp-content/plugins/` directory
-1. Activate the plugin through the 'Plugins' menu in WordPress
-1. Place `<?php do_action('plugin_name_hook'); ?>` in your templates
+1. Upload the `jsontoimg` folder to `/wp-content/plugins/`
+1. Activate the plugin through the Plugins menu
+1. Go to Settings → jsontoimg
+1. Paste an API key from [Integrations → API keys](https://app.jsontoimg.com/integrations/api-keys)
+1. Click Test connection, then Save changes
 
 == Frequently Asked Questions ==
 
-= A question that someone might have =
+= How do I embed an image in a post? =
 
-An answer to that question.
+Use the jsontoimg block, or a shortcode:
 
-= What about foo bar? =
+`[jsontoimg template="DESIGN_ID" format="png" alt="Hello" class="aligncenter" layers='{"headline":{"text":"Hello"}}']`
 
-Answer to foo bar dilemma.
+= Why does an image_url layer fail? =
 
-== Screenshots ==
+The Render API only accepts `image_url` values that are:
 
-1. This screen shot description corresponds to screenshot-1.(png|jpg|jpeg|gif). Note that the screenshot is taken from
-the /assets directory or the directory that contains the stable readme.txt (tags or trunk). Screenshots in the /assets
-directory take precedence. For example, `/assets/screenshot-1.png` would win over `/tags/4.3/screenshot-1.png`
-(or jpg, jpeg, gif).
-2. This is the second screen shot
+* `https://…/file.png` (also `.jpg`, `.jpeg`, `.webp`), or
+* a dashboard Assets path `/api/uploads/files/{id}`
+
+`https://placehold.co/600x400` is rejected (no file extension). `https://placehold.co/600x400.png` may pass validation and still fail when the renderer fetches it, because placeholder CDNs often block server-side downloads. Use a real public file from the Media Library or the jsontoimg Assets library.
+
+For `logo`, send JSON like `{"logo":{"image_url":"https://example.com/logo.png"}}` — not a `layers` query you hand-edit. The plugin mints that signed URL for you.
+
+= How do I set the featured image? =
+
+In the post editor, insert the jsontoimg block, pick a template, then click **Set as Featured Image**. The plugin downloads the signed render into the Media Library and assigns it as the post thumbnail. The post type must support featured images.
+
+= Does every page view consume a credit? =
+
+No. The plugin caches the signed URL. The first unique GET of that URL bills once; repeats are cache hits on jsontoimg.
+
+= Where is the API key stored? =
+
+In the WordPress options table (`jsontoimg_api_key`). It is never printed in frontend HTML.
+
+= Can I change the API origin? =
+
+Yes. Base URL defaults to `https://app.jsontoimg.com`. A trailing `/api/v1` is stripped. Change it only if you self-host.
+
+= How do I rebuild the Gutenberg block? =
+
+From this plugin directory:
+
+`npm install && npm run build`
 
 == Changelog ==
 
-= 1.0 =
-* A change since the previous version.
-* Another change.
-
-= 0.5 =
-* List versions from most recent at top to oldest at bottom.
-
-== Upgrade Notice ==
-
-= 1.0 =
-Upgrade notices describe the reason a user should upgrade.  No more than 300 characters.
-
-= 0.5 =
-This version fixes a security related bug.  Upgrade immediately.
-
-== Arbitrary section ==
-
-You may provide arbitrary sections, in the same format as the ones above.  This may be of use for extremely complicated
-plugins where more information needs to be conveyed that doesn't fit into the categories of "description" or
-"installation."  Arbitrary sections will be shown below the built-in sections outlined above.
-
-== A brief Markdown Example ==
-
-Ordered list:
-
-1. Some feature
-1. Another feature
-1. Something else about the plugin
-
-Unordered list:
-
-* something
-* something else
-* third thing
-
-Here's a link to [WordPress](http://wordpress.org/ "Your favorite software") and one to [Markdown's Syntax Documentation][markdown syntax].
-Titles are optional, naturally.
-
-[markdown syntax]: http://daringfireball.net/projects/markdown/syntax
-            "Markdown is what the parser uses to process much of the readme file"
-
-Markdown uses email style notation for blockquotes and I've been told:
-> Asterisks for *emphasis*. Double it up  for **strong**.
-
-`<?php code(); // goes in backticks ?>`
+= 1.0.0 =
+* Initial release: settings, signed-URL shortcode, Gutenberg block, REST helpers.

@@ -112,6 +112,15 @@ class Jsontoimg {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-jsontoimg-i18n.php';
 
 		/**
+		 * Render API client and public helpers.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-jsontoimg-api.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/helpers.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-jsontoimg-settings.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-jsontoimg-rest.php';
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-jsontoimg-block.php';
+
+		/**
 		 * The class responsible for defining all actions that occur in the admin area.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-jsontoimg-admin.php';
@@ -152,10 +161,15 @@ class Jsontoimg {
 	 */
 	private function define_admin_hooks() {
 
-		$plugin_admin = new Jsontoimg_Admin( $this->get_plugin_name(), $this->get_version() );
+		$plugin_admin    = new Jsontoimg_Admin( $this->get_plugin_name(), $this->get_version() );
+		$plugin_settings = new Jsontoimg_Settings();
 
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_styles' );
 		$this->loader->add_action( 'admin_enqueue_scripts', $plugin_admin, 'enqueue_scripts' );
+		$this->loader->add_action( 'admin_menu', $plugin_settings, 'add_settings_page' );
+		$this->loader->add_action( 'admin_init', $plugin_settings, 'register_settings' );
+		$this->loader->add_action( 'wp_ajax_jsontoimg_test_connection', $plugin_settings, 'ajax_test_connection' );
+		$this->loader->add_filter( 'plugin_action_links_' . plugin_basename( JSONTOIMG_PLUGIN_FILE ), $plugin_settings, 'add_settings_link' );
 
 	}
 
@@ -169,9 +183,12 @@ class Jsontoimg {
 	private function define_public_hooks() {
 
 		$plugin_public = new Jsontoimg_Public( $this->get_plugin_name(), $this->get_version() );
+		$plugin_rest   = new Jsontoimg_Rest();
+		$plugin_block  = new Jsontoimg_Block();
 
-		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_styles' );
-		$this->loader->add_action( 'wp_enqueue_scripts', $plugin_public, 'enqueue_scripts' );
+		$this->loader->add_action( 'init', $plugin_public, 'register_shortcode' );
+		$this->loader->add_action( 'init', $plugin_block, 'register' );
+		$this->loader->add_action( 'rest_api_init', $plugin_rest, 'register_routes' );
 
 	}
 

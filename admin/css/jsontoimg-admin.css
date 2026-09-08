@@ -1,4 +1,14 @@
-/**
- * All of the CSS for your admin-specific functionality should be
- * included in this file.
- */
+.jsontoimg-settings .jsontoimg-key-status {
+	margin-top: 4px;
+}
+
+.jsontoimg-settings .jsontoimg-test-row {
+	margin-top: 8px;
+}
+
+.jsontoimg-settings .jsontoimg-test-result {
+	display: inline-block;
+	margin: 0 0 0 8px;
+	padding: 6px 10px;
+	vertical-align: middle;
+}
