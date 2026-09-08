@@ -1,6 +1,7 @@
 import { __ } from '@wordpress/i18n';
 import { InspectorControls, useBlockProps } from '@wordpress/block-editor';
 import {
+	Button,
 	Notice,
 	PanelBody,
 	Placeholder,
@@ -8,6 +9,7 @@ import {
 	Spinner,
 	TextControl,
 } from '@wordpress/components';
+import { useDispatch, useSelect } from '@wordpress/data';
 import { useEffect, useMemo, useState } from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
 import { addQueryArgs } from '@wordpress/url';
@@ -118,6 +120,29 @@ export default function Edit({ attributes, setAttributes }) {
 	const [loadingSchema, setLoadingSchema] = useState(false);
 	const [loadingPreview, setLoadingPreview] = useState(false);
 	const [error, setError] = useState('');
+	const [settingFeatured, setSettingFeatured] = useState(false);
+	const [featuredNotice, setFeaturedNotice] = useState('');
+
+	const postId = useSelect((select) => {
+		const editor = select('core/editor');
+		return editor && editor.getCurrentPostId ? editor.getCurrentPostId() : 0;
+	}, []);
+
+	const supportsThumbnail = useSelect(
+		(select) => {
+			const editor = select('core/editor');
+			const postType =
+				editor && editor.getCurrentPostType ? editor.getCurrentPostType() : '';
+			if (!postType) {
+				return false;
+			}
+			const type = select('core').getPostType(postType);
+			return Boolean(type && type.supports && type.supports.thumbnail);
+		},
+		[]
+	);
+
+	const { editPost } = useDispatch('core/editor');
 
 	const debouncedLayers = useDebouncedValue(layers, 400);
 
@@ -268,6 +293,79 @@ export default function Edit({ attributes, setAttributes }) {
 		});
 	};
 
+	const setAsFeaturedImage = () => {
+		if (!template || settingFeatured) {
+			return;
+		}
+
+		const compacted = compactLayers(layers);
+		const localError = imageUrlError(compacted);
+		if (localError) {
+			setError(localError);
+			return;
+		}
+
+		if (!postId) {
+			setError(
+				__('Save the post before setting a featured image.', 'jsontoimg')
+			);
+			return;
+		}
+
+		setSettingFeatured(true);
+		setFeaturedNotice('');
+		setError('');
+
+		apiFetch({
+			path: '/jsontoimg/v1/featured-image',
+			method: 'POST',
+			data: {
+				postId,
+				template,
+				format,
+				layers: compacted,
+				alt,
+			},
+		})
+			.then((data) => {
+				if (data && data.attachmentId && editPost) {
+					editPost({ featured_media: data.attachmentId });
+				}
+				setFeaturedNotice(
+					__('Featured image updated.', 'jsontoimg')
+				);
+			})
+			.catch((err) => {
+				setError(
+					errorMessage(
+						err,
+						__('Could not set the featured image.', 'jsontoimg')
+					)
+				);
+			})
+			.finally(() => {
+				setSettingFeatured(false);
+			});
+	};
+
+	const featuredDisabled =
+		!template ||
+		loadingPreview ||
+		settingFeatured ||
+		Boolean(imageUrlError(layers));
+
+	const featuredButton = (
+		<Button
+			variant="primary"
+			onClick={setAsFeaturedImage}
+			disabled={featuredDisabled || !postId || !supportsThumbnail}
+		>
+			{settingFeatured
+				? __('Setting featured image…', 'jsontoimg')
+				: __('Set as Featured Image', 'jsontoimg')}
+		</Button>
+	);
+
 	const blockProps = useBlockProps({ className: 'jsontoimg-block' });
 
 	return (
@@ -338,12 +436,36 @@ export default function Edit({ attributes, setAttributes }) {
 						value={height}
 						onChange={(value) => setAttributes({ height: value })}
 					/>
+					<div className="jsontoimg-featured-action">
+						{featuredButton}
+						{!postId ? (
+							<p className="components-base-control__help">
+								{__(
+									'Save the post first, then set it as the featured image.',
+									'jsontoimg'
+								)}
+							</p>
+						) : null}
+						{postId && !supportsThumbnail ? (
+							<p className="components-base-control__help">
+								{__(
+									'This post type does not support a featured image.',
+									'jsontoimg'
+								)}
+							</p>
+						) : null}
+					</div>
 				</PanelBody>
 			</InspectorControls>
 			<div {...blockProps}>
 				{error ? (
 					<Notice status="error" isDismissible={false}>
 						{error}
+					</Notice>
+				) : null}
+				{featuredNotice ? (
+					<Notice status="success" isDismissible={false}>
+						{featuredNotice}
 					</Notice>
 				) : null}
 				{!template ? (
@@ -358,12 +480,17 @@ export default function Edit({ attributes, setAttributes }) {
 				) : null}
 				{template && loadingPreview ? <Spinner /> : null}
 				{template && previewUrl ? (
-					<img
-						src={previewUrl}
-						alt={alt || ''}
-						width={width || undefined}
-						height={height || undefined}
-					/>
+					<>
+						<img
+							src={previewUrl}
+							alt={alt || ''}
+							width={width || undefined}
+							height={height || undefined}
+						/>
+						<div className="jsontoimg-featured-action">
+							{featuredButton}
+						</div>
+					</>
 				) : null}
 			</div>
 		</>

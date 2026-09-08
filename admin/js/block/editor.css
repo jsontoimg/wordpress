@@ -10,3 +10,19 @@
 .jsontoimg-block .components-notice {
 	margin: 0 0 12px;
 }
+
+.jsontoimg-featured-action {
+	margin-top: 12px;
+}
+
+.jsontoimg-featured-action .components-base-control__help {
+	margin-top: 8px;
+}
+
+.jsontoimg-block .components-placeholder {
+	min-height: 160px;
+}
+
+.jsontoimg-block .components-notice {
+	margin: 0 0 12px;
+}

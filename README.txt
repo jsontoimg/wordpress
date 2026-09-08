@@ -20,7 +20,7 @@ The signed URL is the CMS path (`POST /api/v1/img/sign`). The visitor's browser 
 
 * Settings page for API key and optional self-hosted base URL
 * `[jsontoimg]` shortcode
-* Gutenberg block with template picker and schema-driven layer fields
+* Gutenberg block with template picker, schema-driven layer fields, and Set as Featured Image
 * PHP helpers for themes: `jsontoimg_sign_url()`, `jsontoimg_render_image()`, `jsontoimg_list_templates()`
 * Transient cache so posts do not mint a URL on every view
 
@@ -50,6 +50,10 @@ The Render API only accepts `image_url` values that are:
 `https://placehold.co/600x400` is rejected (no file extension). `https://placehold.co/600x400.png` may pass validation and still fail when the renderer fetches it, because placeholder CDNs often block server-side downloads. Use a real public file from the Media Library or the jsontoimg Assets library.
 
 For `logo`, send JSON like `{"logo":{"image_url":"https://example.com/logo.png"}}` — not a `layers` query you hand-edit. The plugin mints that signed URL for you.
+
+= How do I set the featured image? =
+
+In the post editor, insert the jsontoimg block, pick a template, then click **Set as Featured Image**. The plugin downloads the signed render into the Media Library and assigns it as the post thumbnail. The post type must support featured images.
 
 = Does every page view consume a credit? =
 

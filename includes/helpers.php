@@ -308,6 +308,214 @@ function jsontoimg_esc_signed_src( $url ) {
 }
 
 /**
+ * Whether a URL is a signed jsontoimg image GET.
+ *
+ * @since  1.0.0
+ * @param  string $url Candidate URL.
+ * @return bool
+ */
+function jsontoimg_is_signed_img_url( $url ) {
+	$parts = wp_parse_url( (string) $url );
+	if ( ! is_array( $parts ) || empty( $parts['scheme'] ) || empty( $parts['host'] ) || empty( $parts['path'] ) ) {
+		return false;
+	}
+
+	$scheme = strtolower( (string) $parts['scheme'] );
+	if ( 'http' !== $scheme && 'https' !== $scheme ) {
+		return false;
+	}
+
+	if ( 0 !== strpos( (string) $parts['path'], '/api/v1/img/' ) ) {
+		return false;
+	}
+
+	$query = array();
+	if ( ! empty( $parts['query'] ) ) {
+		wp_parse_str( (string) $parts['query'], $query );
+	}
+
+	return ! empty( $query['sig'] );
+}
+
+/**
+ * File extension from a Content-Type header.
+ *
+ * @since  1.0.0
+ * @param  string $content_type MIME type.
+ * @return string|null
+ */
+function jsontoimg_extension_for_mime( $content_type ) {
+	$mime = strtolower( trim( explode( ';', (string) $content_type )[0] ) );
+	$map  = array(
+		'image/png'  => 'png',
+		'image/jpeg' => 'jpg',
+		'image/jpg'  => 'jpg',
+		'image/webp' => 'webp',
+		'image/avif' => 'avif',
+	);
+
+	return isset( $map[ $mime ] ) ? $map[ $mime ] : null;
+}
+
+/**
+ * Download a signed image, retrying HTTP 503 while the render finishes.
+ *
+ * @since  1.0.0
+ * @param  string $url     Signed GET URL.
+ * @param  int    $timeout Seconds to wait (default 60).
+ * @return array|WP_Error  tmp_name, filename, type.
+ */
+function jsontoimg_download_signed_image( $url, $timeout = 60 ) {
+	if ( ! jsontoimg_is_signed_img_url( $url ) ) {
+		return new WP_Error(
+			'jsontoimg_invalid_signed_url',
+			__( 'The signed image URL is invalid.', 'jsontoimg' ),
+			array( 'status' => 400 )
+		);
+	}
+
+	$timeout  = max( 5, (int) $timeout );
+	$deadline = time() + $timeout;
+	$last     = null;
+
+	while ( time() < $deadline ) {
+		$response = wp_remote_get(
+			$url,
+			array(
+				'timeout'     => min( 30, max( 5, $deadline - time() ) ),
+				'redirection' => 5,
+				'headers'     => array(
+					'Accept' => 'image/png,image/jpeg,image/webp,image/avif',
+				),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			$last = $response;
+			break;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( 503 === $code ) {
+			$wait = (int) wp_remote_retrieve_header( $response, 'retry-after' );
+			$wait = $wait > 0 ? min( $wait, 5 ) : 2;
+			if ( time() + $wait >= $deadline ) {
+				$last = new WP_Error(
+					'jsontoimg_render_timeout',
+					__( 'The render did not finish in time. Try again in a moment.', 'jsontoimg' ),
+					array( 'status' => 504 )
+				);
+				break;
+			}
+			sleep( $wait );
+			continue;
+		}
+
+		if ( $code < 200 || $code >= 300 ) {
+			$body    = wp_remote_retrieve_body( $response );
+			$decoded = json_decode( $body, true );
+			$message = __( 'Could not download the rendered image.', 'jsontoimg' );
+			if ( is_array( $decoded ) && ! empty( $decoded['error'] ) ) {
+				$message = (string) $decoded['error'];
+			}
+			return new WP_Error(
+				'jsontoimg_download_failed',
+				$message,
+				array( 'status' => $code )
+			);
+		}
+
+		$type = wp_remote_retrieve_header( $response, 'content-type' );
+		$ext  = jsontoimg_extension_for_mime( $type );
+		if ( ! $ext ) {
+			return new WP_Error(
+				'jsontoimg_not_image',
+				__( 'The render did not return an image file.', 'jsontoimg' ),
+				array( 'status' => 502 )
+			);
+		}
+
+		$tmp = wp_tempnam( 'jsontoimg' );
+		if ( ! $tmp ) {
+			return new WP_Error(
+				'jsontoimg_temp_file',
+				__( 'Could not create a temporary file.', 'jsontoimg' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		$written = file_put_contents( $tmp, wp_remote_retrieve_body( $response ) );
+		if ( false === $written ) {
+			wp_delete_file( $tmp );
+			return new WP_Error(
+				'jsontoimg_temp_file',
+				__( 'Could not write the downloaded image.', 'jsontoimg' ),
+				array( 'status' => 500 )
+			);
+		}
+
+		return array(
+			'tmp_name' => $tmp,
+			'filename' => 'jsontoimg-' . gmdate( 'Ymd-His' ) . '.' . $ext,
+			'type'     => explode( ';', (string) $type )[0],
+		);
+	}
+
+	return $last instanceof WP_Error
+		? $last
+		: new WP_Error(
+			'jsontoimg_render_timeout',
+			__( 'The render did not finish in time. Try again in a moment.', 'jsontoimg' ),
+			array( 'status' => 504 )
+		);
+}
+
+/**
+ * Sideload a signed render into the Media Library and optionally set it as featured.
+ *
+ * @since  1.0.0
+ * @param  string $url     Signed image URL.
+ * @param  int    $post_id Post to attach to.
+ * @param  string $alt     Attachment alt / description.
+ * @param  bool   $featured Whether to set as featured image.
+ * @return int|WP_Error    Attachment ID.
+ */
+function jsontoimg_sideload_signed_image( $url, $post_id, $alt = '', $featured = true ) {
+	$download = jsontoimg_download_signed_image( $url );
+	if ( is_wp_error( $download ) ) {
+		return $download;
+	}
+
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+
+	$file_array = array(
+		'name'     => $download['filename'],
+		'tmp_name' => $download['tmp_name'],
+		'type'     => $download['type'],
+	);
+
+	$attachment_id = media_handle_sideload( $file_array, $post_id, $alt );
+	if ( is_wp_error( $attachment_id ) ) {
+		if ( file_exists( $file_array['tmp_name'] ) ) {
+			wp_delete_file( $file_array['tmp_name'] );
+		}
+		return $attachment_id;
+	}
+
+	if ( '' !== $alt ) {
+		update_post_meta( $attachment_id, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
+	}
+
+	if ( $featured ) {
+		set_post_thumbnail( $post_id, $attachment_id );
+	}
+
+	return (int) $attachment_id;
+}
+
+/**
  * Sanitize a width/height attribute (pixels or a simple CSS length).
  *
  * @since  1.0.0
