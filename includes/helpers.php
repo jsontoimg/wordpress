@@ -366,6 +366,8 @@ function jsontoimg_extension_for_mime( $content_type ) {
  * @return array|WP_Error  tmp_name, filename, type.
  */
 function jsontoimg_download_signed_image( $url, $timeout = 60 ) {
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+
 	if ( ! jsontoimg_is_signed_img_url( $url ) ) {
 		return new WP_Error(
 			'jsontoimg_invalid_signed_url',
@@ -481,14 +483,14 @@ function jsontoimg_download_signed_image( $url, $timeout = 60 ) {
  * @return int|WP_Error    Attachment ID.
  */
 function jsontoimg_sideload_signed_image( $url, $post_id, $alt = '', $featured = true ) {
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	require_once ABSPATH . 'wp-admin/includes/media.php';
+	require_once ABSPATH . 'wp-admin/includes/image.php';
+
 	$download = jsontoimg_download_signed_image( $url );
 	if ( is_wp_error( $download ) ) {
 		return $download;
 	}
-
-	require_once ABSPATH . 'wp-admin/includes/file.php';
-	require_once ABSPATH . 'wp-admin/includes/media.php';
-	require_once ABSPATH . 'wp-admin/includes/image.php';
 
 	$file_array = array(
 		'name'     => $download['filename'],
